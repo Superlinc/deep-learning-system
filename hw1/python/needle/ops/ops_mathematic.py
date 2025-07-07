@@ -202,12 +202,20 @@ class BroadcastTo(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        m = 1
-        for i in out_grad.shape:
-            m *= i
-        for i in node.inputs[0].shape:
-            m /= i
-        return out_grad * m
+        input_shape = node.inputs[0].shape
+        output_shape = out_grad.shape
+
+        input_shape_adjusted = [0] * len(output_shape)
+        if len(input_shape) > 0:
+            input_shape_adjusted[-len(input_shape):] = input_shape[:]
+
+        axes_to_reduce = [axis for axis, (in_dim, out_dim) in enumerate(zip(input_shape_adjusted, output_shape)) if in_dim != out_dim]
+        grad = summation(out_grad, tuple(axes_to_reduce))
+
+        # 标量
+        if len(input_shape) > 0:
+            grad = reshape(grad, input_shape)
+        return grad
         ### END YOUR SOLUTION
 
 
@@ -325,7 +333,10 @@ class ReLU(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        out_grad_data = out_grad.realize_cached_data()
+        input_data = node.inputs[0].realize_cached_data()
+        out_grad_data[input_data < 0] = 0
+        return Tensor(out_grad_data)
         ### END YOUR SOLUTION
 
 

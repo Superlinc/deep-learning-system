@@ -1,7 +1,7 @@
 """Core data structures."""
 import needle
 from .backend_numpy import Device, cpu, all_devices
-from typing import List, Optional, NamedTuple, Tuple, Union
+from typing import List, Optional, NamedTuple, Tuple, Union, Dict
 from collections import namedtuple
 import numpy
 
@@ -364,7 +364,7 @@ class Tensor(Value):
 
 
 
-def compute_gradient_of_variables(output_tensor, out_grad):
+def compute_gradient_of_variables(output_tensor: Tensor, out_grad):
     """Take gradient of output node with respect to each node in node_list.
 
     Store the computed result in the grad field of each Variable.
@@ -380,7 +380,19 @@ def compute_gradient_of_variables(output_tensor, out_grad):
     reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
 
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    for node in reverse_topo_order:
+        node.grad = sum_node_list(node_to_output_grads_list[node])
+        if node.op is None:
+            continue
+
+        input_grads = node.op.gradient(node.grad, node)
+        if isinstance(input_grads, Tensor):
+            input_grads = [input_grads]
+        for i, input_node in enumerate(node.inputs):
+            if input_node not in node_to_output_grads_list:
+                node_to_output_grads_list[input_node] = []
+            node_to_output_grads_list[input_node].append(input_grads[i])
+
     ### END YOUR SOLUTION
 
 
@@ -393,14 +405,22 @@ def find_topo_sort(node_list: List[Value]) -> List[Value]:
     sort.
     """
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    result = []
+    visited = {}
+    for node in node_list:
+        topo_sort_dfs(node, visited, result)
+    return result
     ### END YOUR SOLUTION
 
 
 def topo_sort_dfs(node, visited, topo_order):
     """Post-order DFS"""
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    for input_node in node.inputs:
+        if input_node not in visited:
+            topo_sort_dfs(input_node, visited, topo_order)
+    visited[node] = 1
+    topo_order.append(node)
     ### END YOUR SOLUTION
 
 

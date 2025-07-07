@@ -10,7 +10,7 @@ sys.path.append("python/")
 import needle as ndl
 
 
-def parse_mnist(image_filesname, label_filename):
+def parse_mnist(image_filename, label_filename):
     """Read an images and labels file in MNIST format.  See this page:
     http://yann.lecun.com/exdb/mnist/ for a description of the file format.
 
@@ -33,7 +33,25 @@ def parse_mnist(image_filesname, label_filename):
                 for MNIST will contain the values 0-9.
     """
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    with gzip.open(image_filename, 'rb') as f:
+        file_data = f.read()
+        type, num_image, num_row, num_col = struct.unpack(">4i", file_data[:16])
+        # print(type, num_image, num_row, num_col)
+        num_byte = num_image * num_row * num_col
+        bytes = struct.unpack(f"{num_byte}B", file_data[16:])
+        floats = np.array(bytes, dtype=np.uint8)/255.0
+        X = np.array(floats, dtype=np.float32).reshape(num_image, num_row * num_col)
+
+    with gzip.open(label_filename, 'rb') as f:
+        file_data = f.read()
+        type, num_label = struct.unpack(">2i", file_data[:8])
+        # print(type, num_label)
+        num_byte = num_label
+        bytes = struct.unpack(f"{num_byte}b", file_data[8:])
+        # bytes = [int(x) for x in bytes]
+        y = np.array(bytes, dtype=np.uint8).reshape(num_label)
+
+    return X, y
     ### END YOUR SOLUTION
 
 
@@ -54,7 +72,11 @@ def softmax_loss(Z, y_one_hot):
         Average softmax loss over the sample. (ndl.Tensor[np.float32])
     """
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    size = Z.shape[0]
+    lhs = ndl.log(ndl.exp(Z).sum(axes=(1,)))
+    rhs = (Z * y_one_hot).sum(axes=(1,))
+    loss = (lhs - rhs).sum()
+    return loss / size
     ### END YOUR SOLUTION
 
 
@@ -83,7 +105,25 @@ def nn_epoch(X, y, W1, W2, lr=0.1, batch=100):
     """
 
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    idx = 0
+    num_classes = W2.shape[1]
+    while idx < X.shape[0]:
+        X_batch = ndl.Tensor(X[idx:idx+batch])
+        Z1 = X_batch.matmul(W1)
+        network_output = ndl.relu(Z1).matmul(W2)
+
+        y_batch = y[idx:idx+batch]
+        y_one_hot = np.zeros((batch, num_classes))
+        y_one_hot[np.arange(batch), y_batch] = 1
+        y_one_hot = ndl.Tensor(y_one_hot)
+
+        loss = softmax_loss(network_output, y_one_hot)
+        loss.backward()
+
+        W1 = ndl.Tensor(W1.numpy() - lr * W1.grad.numpy())
+        W2 = ndl.Tensor(W2.numpy() - lr * W2.grad.numpy())
+        idx += batch
+    return W1, W2
     ### END YOUR SOLUTION
 
 
